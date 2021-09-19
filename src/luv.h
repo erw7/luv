@@ -147,6 +147,8 @@ LUALIB_API void luv_set_cthread(lua_State* L, luv_CFcpcall cpcall);
 */
 LUALIB_API int luaopen_luv (lua_State *L);
 
+void luv_set_err_msg_func(void (*func)(const char *, ...));
+
 typedef lua_State* (*luv_acquire_vm)();
 typedef void (*luv_release_vm)(lua_State* L);
 LUALIB_API void luv_set_thread_cb(luv_acquire_vm acquire, luv_release_vm release);

@@ -126,6 +126,10 @@ static int luv_thread_arg_error(lua_State* L);
 static luv_acquire_vm acquire_vm_cb = NULL;
 static luv_release_vm release_vm_cb = NULL;
 
+static void luv_print_err_msg(const char* fmt, ...);
+
+static void(*luv_err_msg)(const char*, ...) = luv_print_err_msg;
+
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif
