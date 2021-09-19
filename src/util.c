@@ -14,6 +14,8 @@
  *  limitations under the License.
  *
  */
+#include <stdarg.h>
+
 #include "private.h"
 
 void luv_stack_dump(lua_State* L, const char* name) {
@@ -112,4 +114,11 @@ static int luv_optboolean(lua_State*L, int idx, int val) {
   if (lua_isboolean(L, idx))
     val = lua_toboolean(L, idx);
   return val;
+}
+
+static void luv_print_err_msg(const char* fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  vfprintf(stderr, fmt, args);
+  va_end(args);
 }

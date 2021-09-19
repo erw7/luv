@@ -671,7 +671,7 @@ LUALIB_API int luv_cfpcall(lua_State* L, int nargs, int nresult, int flags) {
     break;
   case LUA_ERRMEM:
     if ((flags & LUVF_CALLBACK_NOERRMSG) == 0)
-      fprintf(stderr, "System Error: %s\n", lua_tostring(L, -1));
+      luv_err_msg("System Error: %s\n", lua_tostring(L, -1));
     if ((flags & LUVF_CALLBACK_NOEXIT) == 0)
       exit(-1);
     lua_pop(L, 1);
@@ -681,7 +681,7 @@ LUALIB_API int luv_cfpcall(lua_State* L, int nargs, int nresult, int flags) {
   case LUA_ERRERR:
   default:
     if ((flags & LUVF_CALLBACK_NOERRMSG) == 0)
-      fprintf(stderr, "Uncaught Error: %s\n", lua_tostring(L, -1));
+      luv_err_msg("Uncaught Error: %s\n", lua_tostring(L, -1));
     if ((flags & LUVF_CALLBACK_NOEXIT) == 0)
       exit(-1);
     lua_pop(L, 1);
@@ -763,6 +763,10 @@ LUALIB_API void luv_set_thread(lua_State* L, luv_CFpcall pcall) {
 LUALIB_API void luv_set_cthread(lua_State* L, luv_CFcpcall cpcall) {
   luv_ctx_t* ctx = luv_context(L);
   ctx->thrd_cpcall = cpcall;
+}
+
+void luv_set_err_msg_func(void (*func)(const char*, ...)) {
+  luv_err_msg = func;
 }
 
 static void walk_cb(uv_handle_t *handle, void *arg)
