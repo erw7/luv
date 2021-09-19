@@ -89,7 +89,7 @@ static int luv_work_cb(lua_State* L) {
     lua_pushlstring(L, ctx->code, ctx->len);
     if (luaL_loadbuffer(L, ctx->code, ctx->len, "=pool") != 0)
     {
-      fprintf(stderr, "Uncaught Error in work callback: %s\n", lua_tostring(L, -1));
+      luv_err_msg("Uncaught Error in work callback: %s\n", lua_tostring(L, -1));
       lua_pop(L, 2);
 
       lua_pushnil(L);

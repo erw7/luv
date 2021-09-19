@@ -198,7 +198,7 @@ static int luv_thread_arg_push(lua_State* L, luv_thread_arg_t* args, int flags) 
       }
       break;
     default:
-      fprintf(stderr, "Error: thread arg not support type %s at %d",
+      luv_err_msg("Error: thread arg not support type %s at %d",
         lua_typename(L, arg->type), i + 1);
     }
     i++;
@@ -291,7 +291,7 @@ static void luv_thread_cb(void* varg) {
     ctx->thrd_pcall(L, i, 0, 0);
     luv_thread_arg_clear(L, &thd->args, LUVF_THREAD_SIDE_CHILD);
   } else {
-    fprintf(stderr, "Uncaught Error in thread: %s\n", lua_tostring(L, -1));
+    luv_err_msg("Uncaught Error in thread: %s\n", lua_tostring(L, -1));
     //pop errmsg
     lua_pop(L, 1);
   }
