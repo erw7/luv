@@ -4,6 +4,12 @@ if(POLICY CMP0053)
   cmake_policy(SET CMP0053 NEW) # faster evaluation of variable references
 endif()
 
+if(POLICY CMP0054)
+  cmake_policy(SET CMP0054 NEW)
+endif()
+
+set(CMAKE_LEGACY_CYGWIN_WIN32 0)
+
 project (luv C ASM)
 
 set(LUV_VERSION_MAJOR 1)
@@ -65,7 +71,7 @@ endif ()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 if (WITH_SHARED_LIBUV)
-  find_package(Libuv REQUIRED)
+  find_package(LIBUV REQUIRED)
   include_directories(${LIBUV_INCLUDE_DIR})
 else (WITH_SHARED_LIBUV)
   include_directories(deps/libuv/include)
@@ -73,8 +79,8 @@ else (WITH_SHARED_LIBUV)
   if (BUILD_MODULE)
     add_definitions( -DBUILDING_UV_SHARED )
   endif (BUILD_MODULE)
-  set(LIBUV_LIBRARIES uv_a)
-  set_target_properties(uv_a PROPERTIES COMPILE_FLAGS "-fPIC")
+  set(LIBUV_LIBRARIES luv_static)
+  set_target_properties(luv_static PROPERTIES COMPILE_FLAGS "-fPIC")
 endif (WITH_SHARED_LIBUV)
 
 if (LUA)
@@ -125,10 +131,10 @@ else (LUA)
       # We only link the libs on Windows, so find_package fully succeeding
       # is only required on Windows
       if (WIN32)
-        find_package(LuaJIT REQUIRED)
+        find_package(LUAJIT REQUIRED)
         link_directories(${LUAJIT_LIBRARIES})
       else()
-        find_package(LuaJIT)
+        find_package(LUAJIT)
       endif()
       if(NOT LUAJIT_INCLUDE_DIR)
         message( FATAL_ERROR "Failed to find LuaJIT headers. Variable `LUAJIT_INCLUDE_DIR' expected to be defined.")
@@ -206,20 +212,20 @@ if (BUILD_MODULE)
   list(APPEND ACTIVE_TARGETS "luv")
 endif (BUILD_MODULE)
 if (BUILD_STATIC_LIBS)
-  add_library(libluv_a STATIC src/luv.c)
-  set_target_properties(libluv_a PROPERTIES PREFIX "")
-  list(APPEND ACTIVE_TARGETS "libluv_a")
+  add_library(luv_static STATIC src/luv.c)
+  set_target_properties(luv_static PROPERTIES OUTPUT_NAME "luv")
+  list(APPEND ACTIVE_TARGETS "luv_static")
 endif (BUILD_STATIC_LIBS)
 if (BUILD_SHARED_LIBS)
-  add_library(libluv SHARED src/luv.c)
-  set_target_properties(libluv PROPERTIES PREFIX "")
-  set_target_properties(libluv
+  add_library(luv_shared SHARED src/luv.c)
+  set_target_properties(luv_shared
     PROPERTIES VERSION ${LUV_VERSION} SOVERSION ${LUV_VERSION_MAJOR})
+  set_target_properties(luv_shared PROPERTIES OUTPUT_NAME "luv")
   if(APPLE)
-    set_target_properties(libluv
+    set_target_properties(luv_shared
       PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
   endif(APPLE)
-  list(APPEND ACTIVE_TARGETS "libluv")
+  list(APPEND ACTIVE_TARGETS "luv_shared")
 endif (BUILD_SHARED_LIBS)
 
 if(APPLE)
@@ -259,6 +265,20 @@ foreach(TARGET_NAME ${ACTIVE_TARGETS})
         endif (LUA_BUILD_TYPE STREQUAL System)
       endif (USE_LUAJIT)
     endif (LUA)
+  elseif("${CMAKE_SYSTEM_NAME}" MATCHES "CYGWIN|MSYS")
+    if (LUA)
+      target_link_libraries(${TARGET_NAME} ${LIBUV_LIBRARIES} ${LUA_LIBRARIES})
+    else (LUA)
+      if (USE_LUAJIT)
+        target_link_libraries(${TARGET_NAME} ${LIBUV_LIBRARIES} ${LUAJIT_LIBRARIES})
+      else (USE_LUAJIT)
+        if (LUA_BUILD_TYPE STREQUAL System)
+          target_link_libraries(${TARGET_NAME} ${LIBUV_LIBRARIES} ${LUA_LIBRARIES})
+        else (LUA_BUILD_TYPE STREQUAL System)
+          target_link_libraries(${TARGET_NAME} ${LIBUV_LIBRARIES} lualib)
+        endif (LUA_BUILD_TYPE STREQUAL System)
+      endif (USE_LUAJIT)
+    endif (LUA)
   elseif("${CMAKE_SYSTEM_NAME}" MATCHES "Linux")
     target_link_libraries(${TARGET_NAME} ${LIBUV_LIBRARIES} rt)
   else()
@@ -281,12 +301,15 @@ if (NOT LUA)
   if (BUILD_SHARED_LIBS)
     set(SHAREDLIBS_INSTALL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib"
       CACHE PATH "Installation directory for shared libraries")
+    set(SHAREDLIBS_INSTALL_BIN_DIR "${CMAKE_INSTALL_PREFIX}/bin"
+      CACHE PATH "Installation directory for shared libraries")
   endif (BUILD_SHARED_LIBS)
 else ()
   # use paths from luaRocks
   set(MODULE_INSTALL_LIB_DIR "${INSTALL_LIB_DIR}")
   set(STATICLIBS_INSTALL_LIB_DIR "${INSTALL_LIB_DIR}")
   set(SHAREDLIBS_INSTALL_LIB_DIR "${INSTALL_LIB_DIR}")
+  set(SHAREDLIBS_INSTALL_BIN_DIR "${INSTALL_BIN_DIR}")
 endif ()
 
 # header install paths are LuaRocks-agnostic, so just use CMAKE_INSTALL_PREFIX regardless
@@ -307,7 +330,7 @@ if (CMAKE_INSTALL_PREFIX)
     )
   endif (BUILD_MODULE)
   if (BUILD_STATIC_LIBS)
-    install(TARGETS libluv_a
+    install(TARGETS luv_static
       ARCHIVE DESTINATION "${STATICLIBS_INSTALL_LIB_DIR}"
       LIBRARY DESTINATION "${STATICLIBS_INSTALL_LIB_DIR}"
     )
@@ -317,9 +340,10 @@ if (CMAKE_INSTALL_PREFIX)
     )
   endif (BUILD_STATIC_LIBS)
   if (BUILD_SHARED_LIBS)
-    install(TARGETS libluv
+    install(TARGETS luv_shared
       ARCHIVE DESTINATION "${SHAREDLIBS_INSTALL_LIB_DIR}"
       LIBRARY DESTINATION "${SHAREDLIBS_INSTALL_LIB_DIR}"
+      RUNTIME DESTINATION "${SHAREDLIBS_INSTALL_BIN_DIR}"
     )
     if(UNIX)
       set(prefix ${CMAKE_INSTALL_PREFIX})
